@@ -1663,6 +1663,21 @@ class AnalogIn(Device):
         return end_time - start_time
 
 
+class DAQCounter(Device):
+    description = 'Counter'
+    generation = 3
+    def __init__(self,name,parent_device,connection,CPT_connection=None,trigger=None): ## EE2
+         self.acquisitions = []
+         self.CPT_connection = CPT_connection
+         self.trigger = trigger
+         Device.__init__(self,name,parent_device,connection)
+
+    def acquire(self,label,start_time,end_time,sample_freq,wait_label=''):
+        self.acquisitions.append({'start_time': start_time, 'end_time': end_time, 'sample_freq': sample_freq,
+                                 'label': label, 'wait_label':wait_label})
+        return end_time - start_time
+
+
 class Shutter(DigitalOut):
     description = 'shutter'
 
