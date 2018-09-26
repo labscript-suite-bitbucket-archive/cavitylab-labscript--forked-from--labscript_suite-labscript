@@ -468,6 +468,9 @@ class Device(object):
         group = hdf5_file['/devices'].create_group(self.name)
         return group
 
+    def stop(self):
+        return
+
 
 class _PrimaryBLACS(Device):
     pass
@@ -2429,6 +2432,11 @@ def stop(t):
     # Indicate the end of an experiment and initiate compilation:
     if t == 0:
         raise LabscriptError('Stop time cannot be t=0. Please make your run a finite duration')
+
+    # Inform all devices that the sequence is over
+    for device in compiler.inventory:
+        device.stop()
+
     for device in compiler.inventory:
         if isinstance(device, PseudoclockDevice):
             device.stop_time = t
