@@ -519,7 +519,7 @@ class IntermediateDevice(Device):
 
 class ClockLine(Device):
     description = 'Generic ClockLine'
-    allowed_children = [IntermediateDevice]
+    allowed_children = [IntermediateDevice,Device]
     _clock_limit = None
 
     @set_passed_properties(property_names = {})
