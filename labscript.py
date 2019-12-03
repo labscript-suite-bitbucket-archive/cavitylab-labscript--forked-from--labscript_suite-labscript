@@ -580,9 +580,9 @@ class Pseudoclock(Device):
             change_times.setdefault(clock_line, [])
             ramps_by_clockline.setdefault(clock_line, [])
             for output in outputs:
-                # print 'output name: %s'%output.name
+                print('output name:', output.name)
                 output_change_times = output.get_change_times()
-                # print output_change_times
+                print(output_change_times)
                 change_times[clock_line].extend(output_change_times)
                 all_change_times.extend(output_change_times)
                 ramps_by_clockline[clock_line].extend(output.get_ramp_times())
@@ -1159,10 +1159,29 @@ class Output(Device):
                     raise LabscriptError('You cannot program the value %s (base units) to %s as it falls outside the limits (%d to %d)'%(str(instruction), self.name, self.limits[0], self.limits[1]))
         self.instructions[time] = instruction
 
+
     def do_checks(self, trigger_times):
         """Basic error checking to ensure the user's instructions make sense"""
         # Check if there are no instructions. Generate a warning and insert an
         # instruction telling the output to remain at its default value.
+        
+        ### Resolve Ramps - Added 8/05/2019 - AP
+        instruction_by_time = sorted(self.instructions.items())
+        for i, (time, instruction) in enumerate(instruction_by_time):
+            if isinstance(instruction, dict):
+                if 'initial' in instruction['description']:
+                    if i == 0:
+                        print("Don't begin with a ramp without an initial value.")
+                    else:
+                        previous_instruction = instruction_by_time[i - 1][1]
+                        print(previous_instruction)
+                        if isinstance(previous_instruction, dict):
+                            print("A")
+                            self.instructions[time]['function'] = instruction['function'](previous_instruction['final'])
+                        else:
+                            print("B")
+                            self.instructions[time]['function'] = instruction['function'](previous_instruction)
+                        print("Assigned new initial values")
         if not self.instructions:
             if not config.suppress_mild_warnings and not config.suppress_all_warnings:
                 sys.stderr.write(' '.join(['WARNING:', self.name, 'has no instructions. It will be set to %s for all time.\n'%self.instruction_to_string(self.default_value)]))
@@ -1349,8 +1368,12 @@ class AnalogQuantity(Output):
                     message = ''.join(['WARNING: AnalogOutput \'%s\' has the same initial and final value at time t=%.10fs with duration %.10fs. In order to save samples and clock ticks this instruction is replaced with a constant output. '%(self.name, t, duration)])
                     sys.stderr.write(message + '\n')
             else:
-                self.add_instruction(t, {'function': functions.ramp(round(t + duration, 10) - round(t, 10), initial, final), 'description': 'linear ramp',
-                                     'initial time': t, 'end time': t + truncation * duration, 'clock rate': samplerate, 'units': units})
+                if initial == None:
+                    self.add_instruction(t, {'function': functions.ramp_without_initial(round(t + duration, 10) - round(t, 10), final), 'description': 'linear ramp without initial',
+                                             'initial time': t, 'end time': t + truncation * duration, 'clock rate': samplerate, 'units': units, 'final': final})
+                else:
+                    self.add_instruction(t, {'function': functions.ramp(round(t + duration, 10) - round(t, 10), initial, final), 'description': 'linear ramp',
+                                             'initial time': t, 'end time': t + truncation * duration, 'clock rate': samplerate, 'units': units, 'final': final})
         return truncation * duration
 
     def sine(self, t, duration, amplitude, angfreq, phase, dc_offset, samplerate, units=None, truncation=1.):
